@@ -1,0 +1,64 @@
+const bodyParser = require('body-parser');
+const express = require('express');
+const app = express();
+const passport = require('passport');
+const configAuth = require('./config/auth');
+const FacebookStrategy = require('passport-facebook').Strategy;
+const session = require('express-session')
+const graph = require('fbgraph');
+
+
+
+
+//CORS - Error Handling
+app.use((req, res, next) => {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Origin, X-Requested-With, Content-Type, Accept, Authorization"
+	);
+	if(req.method === "OPTIONS"){
+		res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+		return res.status(200).json({});
+	}
+	next();
+});
+//Body Parser
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(session({
+	secret: 'what',
+	resave: true,
+	saveUninitialized: true
+}))
+
+
+
+
+passport.use(new FacebookStrategy({
+	clientID: configAuth.facebookAuth.clientID,
+	clientSecret: configAuth.facebookAuth.clientSecret,
+	callbackURL: configAuth.facebookAuth.callbackURL,
+},
+function(accessToken, refreshToken, profile, cb) {
+	graph.post(profile.id + '/feed?access_token=007',function (err,res) {
+			console.log(res)
+	})
+}
+));
+
+
+
+app.get('/auth/facebook',  passport.authenticate('facebook', { scope: ['user_friends', 'manage_pages'] })) 
+
+
+	
+
+app.get('/auth/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/me');
+  });
+
+
+module.exports = app; 
